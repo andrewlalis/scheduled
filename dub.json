@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"Andrew Lalis"
+	],
+	"copyright": "Copyright © 2021, Andrew Lalis",
+	"description": "Simple CRON-style scheduling library.",
+	"license": "MIT",
+	"name": "scheduled"
+}

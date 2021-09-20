@@ -1,0 +1,15 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/scheduled
+scheduled.so
+scheduled.dylib
+scheduled.dll
+scheduled.a
+scheduled.lib
+scheduled-test-*
+*.exe
+*.o
+*.obj
+*.lst
