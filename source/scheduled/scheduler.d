@@ -43,7 +43,12 @@ public class ThreadedJobScheduler : Thread, JobScheduler {
     import std.datetime.systime;
     import core.time;
 
-    private static immutable ulong MAX_SLEEP_MSECS = 5000;
+    /** 
+     * The maximum amount of time that this scheduler may sleep for. This is
+     * mainly used as a sanity check against clock deviations or other
+     * inconsistencies in timings.
+     */
+    private static immutable Duration MAX_SLEEP_TIME = seconds(60);
 
     private CurrentTimeProvider timeProvider;
     private TaskPool taskPool;
@@ -70,6 +75,11 @@ public class ThreadedJobScheduler : Thread, JobScheduler {
         super.start();
     }
 
+    /** 
+     * Runs the scheduler. This works by popping the next scheduled task from
+     * the priority queue (since scheduled tasks are ordered by their next
+     * execution date) and sleeping until we reach that task's execution date.
+     */
     void run() {
         this.running = true;
         while (this.running && !this.jobPriorityQueue.empty) {
@@ -77,17 +87,25 @@ public class ThreadedJobScheduler : Thread, JobScheduler {
             this.jobPriorityQueue.removeFront;
             SysTime now = this.timeProvider.now;
             auto nextExecutionTime = job.getSchedule.getNextExecutionTime(now);
+            // If the job doesn't have a next execution, skip it, don't requeue it, and try again.
             if (nextExecutionTime.isNull) continue;
-            Duration waitTime = hnsecs(nextExecutionTime.get.stdTime - now.stdTime);
-            if (waitTime > hnsecs(0)) {
-                import std.stdio;
-                writefln("Waiting %d ms", waitTime.total!"msecs");
-                this.sleep(waitTime);
-            }
-            this.taskPool.put(task(&job.getJob.run));
-            job.getSchedule.markExecuted(this.timeProvider.now);
-            if (job.getSchedule.isRepeating) {
+            Duration timeUntilJob = hnsecs(nextExecutionTime.get.stdTime - now.stdTime);
+            
+            // If the time until the next job is longer than our max sleep time, requeue the job and sleep as long as possible.
+            if (MAX_SLEEP_TIME < timeUntilJob) {
                 this.jobPriorityQueue.insert(job);
+                this.sleep(MAX_SLEEP_TIME);
+            } else {
+                // The time until the next job is close enough that we can sleep directly to it.
+                if (timeUntilJob > hnsecs(0)) {
+                    this.sleep(timeUntilJob);
+                }
+                // Queue up running the job, and process all other aspects of it.
+                this.taskPool.put(task(&job.getJob.run));
+                job.getSchedule.markExecuted(this.timeProvider.now);
+                if (job.getSchedule.isRepeating) {
+                    this.jobPriorityQueue.insert(job);
+                }
             }
         }
     }
