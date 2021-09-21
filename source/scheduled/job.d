@@ -99,6 +99,14 @@ public final class ScheduledJob {
         return this.job;
     }
 
+    /** 
+     * Compares two scheduled jobs, such that jobs whose next execution time
+     * is earlier, are considered greater than others.
+     * Params:
+     *   other = The object to compare to.
+     * Returns: 1 if this object is greater, -1 if this object is less, or 0
+     * otherwise.
+     */
     override int opCmp(Object other) {
         if (auto otherJob = cast(ScheduledJob) other) {
             SysTime now = timeProvider.now;
@@ -112,4 +120,34 @@ public final class ScheduledJob {
             return 0;
         }
     }
+}
+
+/**
+ * Tests the functionality of comparing two scheduled jobs.
+ */
+unittest {
+    import std.experimental.logger;
+    import scheduled.schedules.one_time;
+
+    JobSchedule s1 = new OneTimeSchedule(msecs(50));
+    JobSchedule s2 = new OneTimeSchedule(msecs(500));
+    JobSchedule s3 = new OneTimeSchedule(msecs(2500));
+
+    class IncrementJob : Job {
+        public uint x = 0;
+        public void run() {
+            x++;
+            logf(LogLevel.info, "Incrementing counter to %d.", x);
+        }
+    }
+    auto j = new IncrementJob;
+
+    ScheduledJob jobA = new ScheduledJob(j, s1);
+    ScheduledJob jobA2 = new ScheduledJob(j, s1);
+    ScheduledJob jobB = new ScheduledJob(j, s2);
+    ScheduledJob jobC = new ScheduledJob(j, s3);
+    assert(jobA > jobB);
+    assert(jobA >= jobA2 && jobA <= jobA2);
+    assert(jobB > jobC);
+    assert(jobA > jobC);
 }
