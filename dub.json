@@ -1,9 +1,15 @@
 {
 	"authors": [
-		"Andrew Lalis"
+		"Andrew Lalis <andrewlalisofficial@gmail.com>"
 	],
 	"copyright": "Copyright © 2021, Andrew Lalis",
+	"dependencies": {
+		"cronexp": ">=0.1.0-beta3 <0.2.0-0"
+	},
 	"description": "Simple CRON-style scheduling library.",
 	"license": "MIT",
-	"name": "scheduled"
+	"name": "scheduled",
+	"homepage": "https://github.com/andrewlalis/scheduled",
+	"targetType": "library",
+	"targetName": "scheduled"
 }

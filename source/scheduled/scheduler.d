@@ -2,24 +2,64 @@ module scheduled.scheduler;
 
 import scheduled.job;
 import scheduled.schedule;
+import scheduled.schedules.cron_schedule;
 
 /** 
  * A scheduler is the core component of the library; you add jobs to the job
  * scheduler, and then it will execute these according to the job's schedule.
  */
 public interface JobScheduler {
+    /** 
+     * Adds a job to the scheduler.
+     * Params:
+     *   job = The job to be added. 
+     */
     void addJob(ScheduledJob job);
 
+    /**
+     * Adds a job to the scheduler, with the given schedule to define when it
+     * should be run.
+     * Params:
+     *   job = The job to be added.
+     *   schedule = The schedule defining when the job is run.
+     */
     final void addJob(Job job, JobSchedule schedule) {
         addJob(new ScheduledJob(job, schedule));
     }
 
+    /** 
+     * Adds a simple job that executes the given function according to the
+     * given schedule.
+     * Params:
+     *   fn = A function to execute.
+     *   schedule = The schedule defining when to execute the function.
+     */
     final void addJob(void function() fn, JobSchedule schedule) {
         addJob(new FunctionJob(fn), schedule);
     }
 
+    /** 
+     * Adds a job to the scheduler, whose schedule is defined by the given cron
+     * expression string.
+     * Params:
+     *   job = The job to be added.
+     *   cronExpressionString = A Cron expression string defining when to run the job.
+     */
+    final void addCronJob(Job job, string cronExpressionString) {
+        addJob(job, new CronSchedule(cronExpressionString));
+    }
+
+    /**
+     * Starts the scheduler. Once started, there is no guarantee that all
+     * scheduler implementations will allow adding new jobs while running.
+     */
     void start();
 
+    /**
+     * Stops the scheduler.
+     * Params:
+     *   force = Whether to forcibly shutdown, cancelling any current jobs.
+     */
     void stop(bool force);
 
     /** 
