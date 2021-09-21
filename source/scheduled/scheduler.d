@@ -14,6 +14,10 @@ public interface JobScheduler {
         addJob(new ScheduledJob(job, schedule));
     }
 
+    final void addJob(void function() fn, JobSchedule schedule) {
+        addJob(new FunctionJob(fn), schedule);
+    }
+
     void start();
 
     void stop(bool force);
