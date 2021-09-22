@@ -1,3 +1,7 @@
+/**
+ * The scheduled library provides components for executing tasks according to
+ * user-defined schedules.
+ */
 module scheduled;
 
 public import scheduled.job;

@@ -1,3 +1,6 @@
+/**
+ * Defines the job interface, and some simple utilities to go with it.
+ */
 module scheduled.job;
 
 import std.datetime;

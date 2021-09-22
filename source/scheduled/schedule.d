@@ -1,3 +1,7 @@
+/**
+ * Defines the interface which all schedules implement, and some utilities that
+ * go along with the schedule concept.
+ */
 module scheduled.schedule;
 
 import std.datetime;
@@ -47,6 +51,19 @@ public class SysTimeProvider : CurrentTimeProvider {
     }
 }
 
+/**
+ * Tests the functionality of the system time provider.
+ */
+unittest {
+    import core.thread;
+    auto provider = new SysTimeProvider;
+    for (int i = 0; i < 10; i++) {
+        auto duration = provider.now - Clock.currTime;
+        assert(duration < msecs(100), "System time provider's time does not match expected.");
+        Thread.sleep(msecs(10));
+    }
+}
+
 /** 
  * Implementation of the current time provider which always returns a fixed
  * value, useful for testing.
@@ -61,4 +78,16 @@ public class FixedTimeProvider : CurrentTimeProvider {
     SysTime now() const {
         return this.currentTime;
     }
+}
+
+/**
+ * Tests the functionality of the fixed time provider.
+ */
+unittest {
+    import core.thread;
+    SysTime time = SysTime(DateTime(2021, 9, 22, 22, 34, 57));
+    auto provider = new FixedTimeProvider(time);
+    assert(provider.now == time, "Fixed time provider's time does not match expected.");
+    Thread.sleep(seconds(1));
+    assert(provider.now == time, "Fixed time provider's time does not match expected.");
 }

@@ -1,3 +1,7 @@
+/**
+ * Defines the scheduler interface, and a simple thread-based implementation
+ * of the scheduler.
+ */
 module scheduled.scheduler;
 
 import scheduled.job;
@@ -214,7 +218,6 @@ unittest {
         public uint x = 0;
         public void run() {
             x++;
-            logf(LogLevel.info, "Incrementing counter to %d.", x);
         }
     }
 
@@ -224,12 +227,10 @@ unittest {
     auto inc1 = new IncrementJob;
     scheduler.addJob(inc1, new FixedIntervalSchedule(msecs(50)));
     scheduler.start();
-    log(LogLevel.info, "Started scheduler.");
     Thread.sleep(msecs(130));
     // We expect the job to be executed at t = 0, 50, and 100 ms.
     assert(inc1.x == 3, "Job did not execute the expected number of times.");
     scheduler.stop();
-    log(LogLevel.info, "Stopped scheduler.");
 
     // Test case 2: Scheduler with multiple jobs.
 
@@ -239,12 +240,10 @@ unittest {
     scheduler2.addJob(incA, new FixedIntervalSchedule(msecs(50)));
     scheduler2.addJob(incB, new FixedIntervalSchedule(msecs(80)));
     scheduler2.start();
-    log(LogLevel.info, "Started scheduler 2.");
     Thread.sleep(msecs(180));
     // We expect job A to be executed at t = 0, 50, 100, and 150.
     assert(incA.x == 4, format("Job executed %d times instead of the expected %d.", incA.x, 4));
     // We expect job B to be executed at t = 0, 80, and 160.
     assert(incB.x == 3, format("Job executed %d times instead of the expected %d.", incB.x, 3));
     scheduler2.stop();
-    log(LogLevel.info, "Stopped scheduler 2.");
 }
