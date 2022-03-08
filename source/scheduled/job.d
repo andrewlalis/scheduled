@@ -118,7 +118,7 @@ package final class ScheduledJob {
      * Gets the id for this scheduled job.
      * Returns: The id.
      */
-    public long getId() {
+    public long getId() const {
         return this.id;
     }
 
@@ -143,6 +143,20 @@ package final class ScheduledJob {
         } else {
             return 0;
         }
+    }
+
+    /** 
+     * Checks if another object equals this one. That is only the case when
+     * the supplied object is a ScheduledJob with the same id.
+     * Params:
+     *   other = The object to check equality with.
+     * Returns: True if the other object is equal to this one.
+     */
+    override bool opEquals(Object other) const {
+        if (auto otherJob = cast(ScheduledJob) other) {
+            return this.getId == otherJob.getId;
+        }
+        return false;
     }
 }
 
@@ -174,4 +188,7 @@ unittest {
     assert(jobA >= jobA2 && jobA <= jobA2);
     assert(jobB > jobC);
     assert(jobA > jobC);
+    assert(jobA != jobA2);
+    ScheduledJob jobAcopy = new ScheduledJob(j, s1, 1);
+    assert(jobA == jobAcopy);
 }
