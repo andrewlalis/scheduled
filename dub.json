@@ -7,9 +7,9 @@
 		"cronexp": ">=0.1.0-beta3 <0.2.0-0"
 	},
 	"description": "Simple CRON-style scheduling library.",
+	"homepage": "https://github.com/andrewlalis/scheduled",
 	"license": "MIT",
 	"name": "scheduled",
-	"homepage": "https://github.com/andrewlalis/scheduled",
-	"targetType": "library",
-	"targetName": "scheduled"
+	"targetName": "scheduled",
+	"targetType": "library"
 }

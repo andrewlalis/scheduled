@@ -44,9 +44,10 @@ public class FunctionJob : Job {
 }
 
 /** 
- * Represents a pairing of a Job with a schedule.
+ * Represents a pairing of a Job with a schedule. This is a component that
+ * is utilized internally by Schedulers.
  */
-public final class ScheduledJob {
+package final class ScheduledJob {
     /** 
      * The component which is used to obtain current timestamps.
      */
@@ -63,16 +64,26 @@ public final class ScheduledJob {
     private Job job;
 
     /** 
+     * The unique id for this scheduled job, within the context of the
+     * scheduler that's responsible for it. This id should be unique among all
+     * jobs currently managed by the scheduler, but ids may be reused once old
+     * jobs are removed.
+     */
+    private immutable long id;
+
+    /** 
      * Constructs a new pairing of a job and a schedule.
      * Params:
      *   job = The job which is scheduled.
      *   schedule = The schedule that defines when the job will run.
+     *   id = The unique id for this job.
      *   timeProvider = Provider of current timestamps.
      */
-    public this(Job job, JobSchedule schedule, CurrentTimeProvider timeProvider) {
+    package this(Job job, JobSchedule schedule, long id, CurrentTimeProvider timeProvider) {
         this.job = job;
         this.schedule = schedule;
         this.timeProvider = timeProvider;
+        this.id = id;
     }
 
     /** 
@@ -81,9 +92,10 @@ public final class ScheduledJob {
      * Params:
      *   job = The job which is scheduled.
      *   schedule = The schedule that defines when the job will run.
+     *   id = The unique id for this job.
      */
-    public this(Job job, JobSchedule schedule) {
-        this(job, schedule, new SysTimeProvider);
+    package this(Job job, JobSchedule schedule, long id) {
+        this(job, schedule, id, new SysTimeProvider);
     }
 
     /** 
@@ -103,6 +115,14 @@ public final class ScheduledJob {
     }
 
     /** 
+     * Gets the id for this scheduled job.
+     * Returns: The id.
+     */
+    public long getId() {
+        return this.id;
+    }
+
+    /** 
      * Compares two scheduled jobs, such that jobs whose next execution time
      * is earlier, are considered greater than others.
      * Params:
@@ -112,6 +132,7 @@ public final class ScheduledJob {
      */
     override int opCmp(Object other) {
         if (auto otherJob = cast(ScheduledJob) other) {
+            if (this.getId() == otherJob.getId()) return 0; // Exit right away if we're comparing to the same scheduled job.
             SysTime now = timeProvider.now;
             auto t1 = this.getSchedule().getNextExecutionTime(now);
             auto t2 = otherJob.getSchedule().getNextExecutionTime(now);
@@ -145,10 +166,10 @@ unittest {
     }
     auto j = new IncrementJob;
 
-    ScheduledJob jobA = new ScheduledJob(j, s1);
-    ScheduledJob jobA2 = new ScheduledJob(j, s1);
-    ScheduledJob jobB = new ScheduledJob(j, s2);
-    ScheduledJob jobC = new ScheduledJob(j, s3);
+    ScheduledJob jobA = new ScheduledJob(j, s1, 1);
+    ScheduledJob jobA2 = new ScheduledJob(j, s1, 2);
+    ScheduledJob jobB = new ScheduledJob(j, s2, 3);
+    ScheduledJob jobC = new ScheduledJob(j, s3, 4);
     assert(jobA > jobB);
     assert(jobA >= jobA2 && jobA <= jobA2);
     assert(jobB > jobC);
