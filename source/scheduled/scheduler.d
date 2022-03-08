@@ -238,6 +238,15 @@ public class ThreadedJobScheduler : Thread, MutableJobScheduler {
     }
 
     /** 
+     * Removes all jobs from the scheduler.
+     */
+    public void removeAllScheduledJobs() {
+        this.jobsMutex.lock_nothrow();
+        this.jobs = [];
+        this.jobsMutex.unlock_nothrow();
+    }
+
+    /** 
      * Gets the number of jobs that this scheduler has.
      * Returns: The number of jobs currently scheduled.
      */
