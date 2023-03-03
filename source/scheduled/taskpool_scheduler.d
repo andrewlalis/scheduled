@@ -1,4 +1,4 @@
-module scheduled.threadpool_scheduler;
+module scheduled.taskpool_scheduler;
 
 import scheduled.scheduler;
 import scheduled.schedule;
@@ -11,7 +11,7 @@ import slf4d;
  * using a task pool. Allows for adding and removing jobs only when not
  * running.
  */
-public class ThreadedJobScheduler : Thread, MutableJobScheduler {
+public class TaskPoolScheduler : Thread, MutableJobScheduler {
     import std.parallelism;
     import std.datetime.systime;
     import std.algorithm.mutation;
@@ -179,7 +179,9 @@ public class ThreadedJobScheduler : Thread, MutableJobScheduler {
      * Returns: The number of jobs currently scheduled.
      */
     public ulong jobCount() {
-        return this.jobs.length;
+        synchronized(this.jobsMutex) {
+            return this.jobs.length;
+        }
     }
 
     protected CurrentTimeProvider getTimeProvider() {
@@ -223,7 +225,8 @@ public class ThreadedJobScheduler : Thread, MutableJobScheduler {
                 Nullable!SysTime nextExecutionTime = nextJob.schedule.getNextExecutionTime(now);
                 // If the job doesn't have a next execution, simply remove it.
                 if (nextExecutionTime.isNull) {
-                    log.debugF!"Removing job %s (id %d) because it doesn't have a next execution time."(nextJob.job, nextJob.id);
+                    log.debugF!"Removing job %s (id %d) because it doesn't have a next execution time."
+                        (nextJob.job, nextJob.id);
                     this.jobs = this.jobs.remove(0);
                     this.jobsMutex.unlock_nothrow();
                 } else {
@@ -235,7 +238,8 @@ public class ThreadedJobScheduler : Thread, MutableJobScheduler {
                         nextJob.schedule.markExecuted(now);
                         this.jobs = this.jobs.remove(0);
                         if (nextJob.schedule.isRepeating) {
-                            log.debugF!"Requeued job %s (id %d) because its schedule is repeating."(nextJob.job, nextJob.id);
+                            log.debugF!"Requeued job %s (id %d) because its schedule is repeating."
+                                (nextJob.job, nextJob.id);
                             this.jobs ~= nextJob;
                             this.sortJobs();
                         }
@@ -261,7 +265,7 @@ public class ThreadedJobScheduler : Thread, MutableJobScheduler {
      * Params:
      *   force = Whether to forcibly shutdown, cancelling any current jobs.
      */
-    public void stop(bool force) {
+    public void stop(bool force = false) {
         this.running = false;
         if (waiting) emptyJobsSemaphore.notify();
         if (force) {
@@ -290,6 +294,9 @@ unittest {
     prov.getLoggerFactory.setModuleLevel("scheduled.threadpool_scheduler", Levels.DEBUG);
     configureLoggingProvider(prov);
 
+    // Run standard Scheduler test suite:
+    testScheduler(() => new TaskPoolScheduler());
+
     // Create a simple job which increments a variable by 1.
     class IncrementJob : Job {
         public uint x = 0;
@@ -300,8 +307,6 @@ unittest {
 
         public void run() {
             x++;
-            import std.stdio;
-            writefln!"[%s] Incrementing x to %d"(id, x);
         }
     }
 
@@ -311,7 +316,7 @@ unittest {
 
     // Test case 1: Scheduler with a single job.
 
-    JobScheduler scheduler = new ThreadedJobScheduler;
+    TaskPoolScheduler scheduler = new TaskPoolScheduler();
     auto inc1 = new IncrementJob("1");
     scheduler.addJob(inc1, new FixedIntervalSchedule(msecs(50)));
     scheduler.start();
@@ -321,23 +326,19 @@ unittest {
     scheduler.stop();
 
     // Test case 2: Scheduler with multiple jobs.
-    writeln("Scheduler 1 complete");
-
-    ThreadedJobScheduler scheduler2 = new ThreadedJobScheduler;
+    TaskPoolScheduler scheduler2 = new TaskPoolScheduler();
     auto incA = new IncrementJob("A");
     auto incB = new IncrementJob("B");
     ScheduledJob sjA = scheduler2.addJob(incA, new FixedIntervalSchedule(msecs(50)));
     ScheduledJob sjB = scheduler2.addJob(incB, new FixedIntervalSchedule(msecs(80)));
     assert(scheduler2.jobCount == 2);
     scheduler2.start();
-    writeln("Starting scheduler 2");
     Thread.sleep(msecs(180));
     // We expect job A to be executed at t = 0, 50, 100, and 150.
     assertJobStatus(incA, 4);
     // We expect job B to be executed at t = 0, 80, and 160.
     assertJobStatus(incB, 3);
     // Try and remove a job.
-    writeln("Removing scheduled job A");
     assert(scheduler2.removeScheduledJob(sjA));
     assert(scheduler2.jobCount == 1);
     assert(!scheduler2.removeScheduledJob(sjA));
@@ -348,11 +349,9 @@ unittest {
     assertJobStatus(incA, 4);
     
     // Remove all jobs, wait a bit, and add one back.
-    writeln("Removing scheduled job B and waiting a while.");
     assert(scheduler2.removeScheduledJob(sjB));
     assert(scheduler2.jobCount == 0);
     Thread.sleep(msecs(100));
-    writeln("Adding scheduled job C");
     auto incC = new IncrementJob("C");
     ScheduledJob sjC = scheduler2.addJob(incC, new FixedIntervalSchedule(msecs(30)));
     assert(scheduler2.jobCount == 1);

@@ -110,7 +110,7 @@ public interface JobScheduler {
 
     /** 
      * Stops the scheduler, and waits for any currently-executing jobs to
-     * finish. Functionally equivalent to calling stop(false).
+     * finish. Equivalent to calling stop(false).
      */
     public final void stop() {
         stop(false);
@@ -129,4 +129,40 @@ public interface MutableJobScheduler : JobScheduler {
      * Returns: True if the job was removed, or false otherwise.
      */
     public bool removeScheduledJob(ScheduledJob job);
+}
+
+// For testing, we provide a standardized test suite for an Scheduler to ensure
+// that it is compliant to the interface(s).
+version(unittest) {
+    import scheduled.schedules;
+    import std.datetime;
+
+    alias SchedulerFactory = JobScheduler delegate();
+
+    public void testScheduler(SchedulerFactory factory) {
+        testAddJob(factory);
+    }
+
+    private void testAddJob(SchedulerFactory factory) {
+        import core.thread;
+
+        IncrementJob job = new IncrementJob();
+        auto scheduler = factory();
+        auto scheduledJob = scheduler.addJob(job, new FixedIntervalSchedule(msecs(10), Clock.currTime));
+        assert(job.x == 0);
+        assert(scheduledJob.job == job);
+        
+        scheduler.start();
+        Thread.sleep(msecs(15));
+        assert(job.x == 1);
+        scheduler.stop();
+    }
+
+    private class IncrementJob : Job {
+        public shared uint x = 0;
+        public void run() {
+            import core.atomic;
+            atomicOp!"+="(x, 1);
+        }
+    }
 }
