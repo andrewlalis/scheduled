@@ -133,36 +133,137 @@ public interface MutableJobScheduler : JobScheduler {
 
 // For testing, we provide a standardized test suite for an Scheduler to ensure
 // that it is compliant to the interface(s).
+// It is therefore recommended that all implementations of JobScheduler call
+// `testScheduler(() => new MyCustomScheduler());` in their unit test.
 version(unittest) {
     import scheduled.schedules;
     import std.datetime;
+    import slf4d;
 
     alias SchedulerFactory = JobScheduler delegate();
 
     public void testScheduler(SchedulerFactory factory) {
+        import std.string : format;
+        auto sampleScheduler = factory();
+        string name = format!"%s"(sampleScheduler);
+        sampleScheduler.stop();
+        auto log = getLogger();
+
+        log.infoF!"Testing %s.addJob(...)"(name);
         testAddJob(factory);
+        log.infoF!"Testing %s.getNextScheduledJobId()"(name);
+        testGetNextScheduledJobId(factory);
+        log.infoF!"Testing %s.start()"(name);
+        testStart(factory);
+        log.infoF!"Testing %s.stop()"(name);
+        testStop(factory);
     }
 
     private void testAddJob(SchedulerFactory factory) {
-        import core.thread;
-
-        IncrementJob job = new IncrementJob();
         auto scheduler = factory();
-        auto scheduledJob = scheduler.addJob(job, new FixedIntervalSchedule(msecs(10), Clock.currTime));
+        IncrementJob job = new IncrementJob();
+        auto scheduledJob = scheduler.addJob(job, new FixedIntervalSchedule(msecs(10)));
         assert(job.x == 0);
         assert(scheduledJob.job == job);
-        
+
+        auto anotherScheduledJob = scheduler.addJob(job, new FixedIntervalSchedule(msecs(20)));
+        assert(anotherScheduledJob.job == job);
+        assert(anotherScheduledJob.id != scheduledJob.id);
+    }
+
+    private void testGetNextScheduledJobId(SchedulerFactory factory) {
+        import std.algorithm : canFind;
+        auto scheduler = factory();
+        IncrementJob job = new IncrementJob();
+        ulong[] ids = [];
+        for (int i = 0; i < 1000; i++) {
+            ulong newId = scheduler.getNextScheduledJobId();
+            assert(!canFind(ids, newId));
+            ids ~= newId;
+            scheduler.addJob(job, new FixedIntervalSchedule(msecs(5)));
+        }
+    }
+
+    /** 
+     * Tests the `start()` function of the scheduler, and therefore also the
+     * main operation of the scheduler to execute jobs after starting.
+     * Params:
+     *   factory = The scheduler factory.
+     */
+    private void testStart(SchedulerFactory factory) {
+        import core.thread : Thread;
+
+        auto scheduler = factory();
+        IncrementJob jobA = new IncrementJob();
+        scheduler.addJob(jobA, new FixedIntervalSchedule(msecs(5)));
+        IncrementJob jobB = new IncrementJob();
+        scheduler.addJob(jobB, new FixedIntervalSchedule(msecs(10)));
+        IncrementJob jobC = new IncrementJob();
+        scheduler.addJob(jobC, new OneTimeSchedule(msecs(5)));
+
+        // Before starting, all jobs should not have ran.
+        assert(jobA.x == 0);
+        assert(jobB.x == 0);
+        assert(jobC.x == 0);
+
         scheduler.start();
-        Thread.sleep(msecs(15));
-        assert(job.x == 1);
+        Thread.sleep(msecs(1));
+        // After starting and running a bit, both interval jobs should now have ran once.
+        assert(jobA.x == 1);
+        assert(jobB.x == 1);
+
+        Thread.sleep(msecs(11));
+        // After a total of 12ms, jobA should have ran 3 times at t=0, 5, 10, and jobB 2 times at t=0, 10.
+        assert(jobA.x == 3);
+        assert(jobB.x == 2);
+        // jobC should have ran once, and not been re-queued.
+        assert(jobC.x == 1);
+
         scheduler.stop();
     }
 
+    private void testStop(SchedulerFactory factory) {
+        import core.thread : Thread;
+
+        // Test stopping and waiting for tasks to finish.
+        auto scheduler = factory();
+        LongIncrementJob jobA = new LongIncrementJob(msecs(5));
+        scheduler.addJob(jobA, new FixedIntervalSchedule(msecs(10)));
+        assert(jobA.x == 0);
+        scheduler.start();
+        Thread.sleep(msecs(1));
+        scheduler.stop(false);
+        assert(jobA.x == 1);
+
+        // Test forcefully stopping.
+        scheduler = factory();
+        LongIncrementJob jobB = new LongIncrementJob(msecs(1000));
+        scheduler.addJob(jobB, new FixedIntervalSchedule(seconds(5)));
+        assert(jobB.x == 0);
+        scheduler.start();
+        Thread.sleep(msecs(1));
+        scheduler.stop(true);
+        assert(jobB.x == 0);
+    }
+
     private class IncrementJob : Job {
-        public shared uint x = 0;
+        public uint x = 0;
         public void run() {
-            import core.atomic;
-            atomicOp!"+="(x, 1);
+            x++;
+        }
+    }
+
+    private class LongIncrementJob : IncrementJob {
+        private Duration dur;
+
+        public this(Duration dur = msecs(5)) {
+            this.dur = dur;
+        }
+
+        public override void run() {
+            import core.thread : Thread;
+            Thread.sleep(this.dur);
+            super.run();
         }
     }
 }

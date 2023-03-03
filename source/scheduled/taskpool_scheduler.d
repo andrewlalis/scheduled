@@ -95,6 +95,7 @@ public class TaskPoolScheduler : Thread, MutableJobScheduler {
      */
     public this() {
         this(new TaskPool(1), new SysTimeProvider());
+        this.taskPool.isDaemon = true;
     }
 
     /** 
@@ -284,7 +285,7 @@ unittest {
     import core.thread;
     import core.atomic;
     import std.format;
-    import std.experimental.logger;
+    import std.parallelism;
     import scheduled.schedules.fixed_interval;
     import std.stdio;
     import slf4d;

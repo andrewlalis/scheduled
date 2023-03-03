@@ -69,7 +69,7 @@ unittest {
  * value, useful for testing.
  */
 public class FixedTimeProvider : CurrentTimeProvider {
-    private const SysTime currentTime;
+    private SysTime currentTime;
 
     this(SysTime currentTime) {
         this.currentTime = currentTime;
@@ -77,6 +77,14 @@ public class FixedTimeProvider : CurrentTimeProvider {
 
     SysTime now() const {
         return this.currentTime;
+    }
+
+    public void incrementTime(Duration dur) {
+        this.currentTime += dur;
+    }
+
+    public void setTime(SysTime newTime) {
+        this.currentTime = newTime;
     }
 }
 
