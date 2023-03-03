@@ -71,7 +71,7 @@ public class OneTimeSchedule : JobSchedule {
      * Tells the scheduler that this schedule is never repeating.
      * Returns: Always false.
      */
-    bool isRepeating() {
+    bool isRepeating() const {
         return false;
     }
 }

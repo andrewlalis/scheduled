@@ -33,7 +33,7 @@ public class FixedIntervalSchedule : JobSchedule {
         this.elapsedIntervals++;
     }
 
-    bool isRepeating() {
+    bool isRepeating() const {
         return true;
     }
 }

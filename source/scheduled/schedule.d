@@ -15,7 +15,7 @@ public interface JobSchedule {
      * Gets the timestamp at which the scheduler should plan to execute a job
      * with this schedule next.
      */
-    Nullable!SysTime getNextExecutionTime(SysTime currentTime);
+    Nullable!SysTime getNextExecutionTime(SysTime currentTime) const;
 
     /**
      * Marks the schedule as having been executed at the given time.
@@ -27,7 +27,7 @@ public interface JobSchedule {
      * should be re-queued after being executed.
      * Returns: True if this schedule is repeating, or false otherwise.
      */
-    bool isRepeating();
+    bool isRepeating() const;
 }
 
 /**

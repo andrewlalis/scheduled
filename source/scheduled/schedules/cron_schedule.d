@@ -7,7 +7,7 @@ import std.range;
 import std.regex;
 import std.stdio;
 import std.conv;
-import cronexp : CronExpr;
+import scheduled.cronexp : CronExpr;
 
 import scheduled.schedule;
 
@@ -29,7 +29,7 @@ public class CronSchedule : JobSchedule {
         this(CronExpr(cronExpressionString));
     }
 
-    Nullable!SysTime getNextExecutionTime(SysTime currentTime) {
+    Nullable!SysTime getNextExecutionTime(SysTime currentTime) const {
         DateTime currentDateTime = cast(DateTime)currentTime.toLocalTime;
         Nullable!DateTime dateTime = this.cronExpression.getNext(currentDateTime);
         if (dateTime.isNull) {
@@ -44,7 +44,7 @@ public class CronSchedule : JobSchedule {
         // Don't do anything.
     }
 
-    bool isRepeating() {
+    bool isRepeating() const {
         return true;
     }
 }

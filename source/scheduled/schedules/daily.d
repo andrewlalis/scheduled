@@ -30,7 +30,7 @@ public class DailySchedule : JobSchedule {
         this([isoExtString]);
     }
 
-    Nullable!SysTime getNextExecutionTime(SysTime currentTime) {
+    Nullable!SysTime getNextExecutionTime(SysTime currentTime) const {
         TimeOfDay currentTimeOfDay = cast(TimeOfDay)currentTime.toLocalTime;
         Date currentDate = cast(Date)currentTime.toLocalTime;
         foreach (executionTime; executionTimes) {
@@ -47,7 +47,7 @@ public class DailySchedule : JobSchedule {
         // Don't do anything.
     }
 
-    bool isRepeating() {
+    bool isRepeating() const {
         return true;
     }
 }
