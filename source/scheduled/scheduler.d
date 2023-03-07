@@ -25,6 +25,15 @@ public struct ScheduledJob {
  */
 public interface JobScheduler {
     /** 
+     * Gets a default job scheduler that's recommended to use for most cases.
+     * Returns: A job scheduler.
+     */
+    public static JobScheduler getDefault() {
+        import scheduled.taskpool_scheduler : TaskPoolScheduler;
+        return new TaskPoolScheduler();
+    }
+
+    /** 
      * Adds a job to the scheduler.
      * Params:
      *   job = The job to be added. 
@@ -131,7 +140,7 @@ public interface MutableJobScheduler : JobScheduler {
     public bool removeScheduledJob(ScheduledJob job);
 }
 
-// For testing, we provide a standardized test suite for an Scheduler to ensure
+// For testing, we provide a standardized test suite for a Scheduler to ensure
 // that it is compliant to the interface(s).
 // It is therefore recommended that all implementations of JobScheduler call
 // `testScheduler(() => new MyCustomScheduler());` in their unit test.
@@ -157,6 +166,7 @@ version(unittest) {
         testStart(factory);
         log.infoF!"Testing %s.stop()"(name);
         testStop(factory);
+        log.infoF!"Testing of %s is successful."(name);
     }
 
     private void testAddJob(SchedulerFactory factory) {
