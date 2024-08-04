@@ -1,14 +1,9 @@
 module scheduled.schedules.cron_schedule;
 
-import std.regex;
-import std.datetime;
 import std.typecons;
-import std.range;
-import std.regex;
-import std.stdio;
-import std.conv;
-import scheduled.cronexp : CronExpr;
+import std.datetime;
 
+import scheduled.cronexp : CronExpr;
 import scheduled.schedule;
 
 /** 

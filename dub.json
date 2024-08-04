@@ -3,9 +3,7 @@
 		"Andrew Lalis <andrewlalisofficial@gmail.com>"
 	],
 	"copyright": "Copyright © 2021, Andrew Lalis",
-	"dependencies": {
-		"slf4d": "~>2.4.2"
-	},
+	"dependencies": {},
 	"description": "Simple CRON-style scheduling library.",
 	"homepage": "https://github.com/andrewlalis/scheduled",
 	"license": "MIT",

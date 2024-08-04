@@ -1,10 +1,27 @@
 module scheduled.taskpool_scheduler;
 
+import std.parallelism;
+import std.algorithm;
+import std.datetime;
+import std.typecons;
+import std.range;
+import core.atomic;
+import core.sync.mutex;
+import core.sync.semaphore;
+import core.thread;
+
 import scheduled.scheduler;
 import scheduled.schedule;
 import scheduled.job;
-import core.thread;
-import slf4d;
+
+/**
+ * Compile-time flag that indicates whether we can call SLF4D-style logging
+ * functions.
+ */
+immutable bool HAS_SLF4D = __traits(compiles, {import slf4d;});
+static if (HAS_SLF4D) {
+    import slf4d;
+}
 
 /** 
  * A simple thread-based scheduler that sleeps until the next task, and runs it
@@ -12,15 +29,6 @@ import slf4d;
  * running.
  */
 public class TaskPoolScheduler : Thread, MutableJobScheduler {
-    import std.parallelism;
-    import std.datetime.systime;
-    import std.algorithm.mutation;
-    import std.typecons : Nullable;
-    import std.range : empty;
-    import core.time;
-    import core.atomic;
-    import core.sync.semaphore;
-    import core.sync.mutex;
 
     /** 
      * The maximum amount of time that this scheduler may sleep for. This is
@@ -113,8 +121,9 @@ public class TaskPoolScheduler : Thread, MutableJobScheduler {
         if (this.waiting) {
             this.emptyJobsSemaphore.notify();
         }
-        auto log = getLogger();
-        log.debugF!"Added scheduled job %s with id %d."(job.job, job.id);
+        static if (HAS_SLF4D) {
+            debugF!"Added scheduled job %s with id %d."(job.job, job.id);
+        }
     }
 
     /** 
@@ -134,7 +143,9 @@ public class TaskPoolScheduler : Thread, MutableJobScheduler {
             }
             if (idx != -1) {
                 this.jobs = this.jobs.remove(idx);
-                getLogger().debugF!"Removed job %s (id %d)."(job.job, job.id);
+                static if (HAS_SLF4D) {
+                    debugF!"Removed job %s (id %d)."(job.job, job.id);
+                }
                 return true;
             }
             return false;
@@ -215,7 +226,6 @@ public class TaskPoolScheduler : Thread, MutableJobScheduler {
      * execution date) and sleeping until we reach that task's execution date.
      */
     private void run() {
-        auto log = getLogger();
         this.running = true;
         while (this.running) {
             if (!this.jobs.empty) {
@@ -226,21 +236,29 @@ public class TaskPoolScheduler : Thread, MutableJobScheduler {
                 Nullable!SysTime nextExecutionTime = nextJob.schedule.getNextExecutionTime(now);
                 // If the job doesn't have a next execution, simply remove it.
                 if (nextExecutionTime.isNull) {
-                    log.debugF!"Removing job %s (id %d) because it doesn't have a next execution time."
-                        (nextJob.job, nextJob.id);
+                    static if (HAS_SLF4D) {
+                        debugF!"Removing job %s (id %d) because it doesn't have a next execution time."(
+                            nextJob.job, nextJob.id
+                        );
+                    }
+                    
                     this.jobs = this.jobs.remove(0);
                     this.jobsMutex.unlock_nothrow();
                 } else {
                     Duration timeUntilJob = hnsecs(nextExecutionTime.get.stdTime - now.stdTime);
                     // If it's time to execute this job, then we run it now!
                     if (timeUntilJob.isNegative) {
-                        log.debugF!"Running job %s (id %d)."(nextJob.job, nextJob.id);
+                        static if (HAS_SLF4D) {
+                            debugF!"Running job %s (id %d)."(nextJob.job, nextJob.id);
+                        }
                         this.taskPool.put(task(&nextJob.job.run));
                         nextJob.schedule.markExecuted(now);
                         this.jobs = this.jobs.remove(0);
                         if (nextJob.schedule.isRepeating) {
-                            log.debugF!"Requeued job %s (id %d) because its schedule is repeating."
-                                (nextJob.job, nextJob.id);
+                            static if (HAS_SLF4D) {
+                                debugF!"Requeued job %s (id %d) because its schedule is repeating."
+                                    (nextJob.job, nextJob.id);
+                            }
                             this.jobs ~= nextJob;
                             this.sortJobs();
                         }
@@ -249,12 +267,16 @@ public class TaskPoolScheduler : Thread, MutableJobScheduler {
                         this.jobsMutex.unlock_nothrow();
                         // Otherwise, we sleep until the next job is ready, then try again.
                         Duration timeToSleep = MAX_SLEEP_TIME < timeUntilJob ? MAX_SLEEP_TIME : timeUntilJob;
-                        log.debugF!"Sleeping for %d ms."(timeToSleep.total!"msecs");
+                        static if (HAS_SLF4D) {
+                            debugF!"Sleeping for %d ms."(timeToSleep.total!"msecs");
+                        }
                         this.sleep(timeToSleep);
                     }
                 }
             } else {
-                log.debug_("No jobs in queue. Waiting until a job is added.");
+                static if (HAS_SLF4D) {
+                    debug_("No jobs in queue. Waiting until a job is added.");
+                }
                 this.waiting = true;
                 this.emptyJobsSemaphore.wait();
             }
