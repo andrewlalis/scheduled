@@ -71,7 +71,7 @@ private
     import std.conv : to;
     import std.datetime;
     import std.range : iota;
-    import std.regex : ctRegex, matchFirst, Captures;
+    import std.regex : regex, matchFirst, Captures;
     import std.traits : isSomeString, EnumMembers;
     import std.typecons : tuple, Tuple, Nullable;
 
@@ -211,7 +211,7 @@ struct CronExpr
     {
         CronExpr cron;
 
-        auto regexp = ctRegex!(cronReg);
+        auto regexp = regex(cronReg);
         auto match = matchFirst(expr, regexp);
 
         if (match.empty)
